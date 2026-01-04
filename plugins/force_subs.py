@@ -5,7 +5,7 @@ from pyrogram.errors import UserNotParticipant
 from config import Config
 
 FORCE_SUB_CHANNELS = Config.FORCE_SUB_CHANNELS
-IMAGE_URL = "https://graph.org/file/a27d85469761da836337c.jpg"
+IMAGE_URL = "https://files.catbox.moe/irlzd6.jpg"
 
 async def not_subscribed(_, __, message):
     for channel in FORCE_SUB_CHANNELS:
@@ -31,7 +31,7 @@ async def forces_sub(client, message):
     buttons = [
         [
             InlineKeyboardButton(
-                text=f"• ᴊᴏɪɴ {channel.capitalize()} •", url=f"https://t.me/{channel}"
+                text=f"• ᴊᴏɪɴ {channel.capitalize()} •", url=f"https://t.me/AniWeb_Shogunate"
             )
         ]
         for channel in not_joined_channels
@@ -78,7 +78,7 @@ async def check_subscription(client, callback_query: CallbackQuery):
             [
                 InlineKeyboardButton(
                     text=f"• ᴊᴏɪɴ {channel.capitalize()} •",
-                    url=f"https://t.me/{channel}",
+                    url=f"https://t.me/AniWeb_Shogunate",
                 )
             ]
             for channel in not_joined_channels
