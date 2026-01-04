@@ -1,96 +1,154 @@
-import os
+from helper.database import codeflixbots as db
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from pyrogram.errors import UserNotParticipant
-from config import Config
+from config import Txt
 
-FORCE_SUB_CHANNELS = Config.FORCE_SUB_CHANNELS
-IMAGE_URL = "https://files.catbox.moe/irlzd6.jpg"
+@Client.on_message(filters.command("metadata"))
+async def metadata(client, message):
+    user_id = message.from_user.id
 
-async def not_subscribed(_, __, message):
-    for channel in FORCE_SUB_CHANNELS:
-        try:
-            user = await message._client.get_chat_member(channel, message.from_user.id)
-            if user.status in {"kicked", "left"}:
-                return True
-        except UserNotParticipant:
-            return True
-    return False
+    # Fetch user metadata from the database
+    current = await db.get_metadata(user_id)
+    title = await db.get_title(user_id)
+    author = await db.get_author(user_id)
+    artist = await db.get_artist(user_id)
+    video = await db.get_video(user_id)
+    audio = await db.get_audio(user_id)
+    subtitle = await db.get_subtitle(user_id)
 
-@Client.on_message(filters.private & filters.create(not_subscribed))
-async def forces_sub(client, message):
-    not_joined_channels = []
-    for channel in FORCE_SUB_CHANNELS:
-        try:
-            user = await client.get_chat_member(channel, message.from_user.id)
-            if user.status in {"kicked", "left"}:
-                not_joined_channels.append(channel)
-        except UserNotParticipant:
-            not_joined_channels.append(channel)
+    # Display the current metadata
+    text = f"""
+**㊋ Yᴏᴜʀ Mᴇᴛᴀᴅᴀᴛᴀ ɪꜱ ᴄᴜʀʀᴇɴᴛʟʏ: {current}**
 
+**◈ Tɪᴛʟᴇ ▹** `{title if title else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Aᴜᴛʜᴏʀ ▹** `{author if author else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Aʀᴛɪꜱᴛ ▹** `{artist if artist else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Aᴜᴅɪᴏ ▹** `{audio if audio else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Sᴜʙᴛɪᴛʟᴇ ▹** `{subtitle if subtitle else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Vɪᴅᴇᴏ ▹** `{video if video else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+    """
+
+    # Inline buttons to toggle metadata
     buttons = [
         [
-            InlineKeyboardButton(
-                text=f"• ᴊᴏɪɴ {channel.capitalize()} •", url=f"https://t.me/{channel}"
-            )
-        ]
-        for channel in not_joined_channels
-    ]
-    buttons.append(
+            InlineKeyboardButton(f"On{' ✅' if current == 'On' else ''}", callback_data='on_metadata'),
+            InlineKeyboardButton(f"Off{' ✅' if current == 'Off' else ''}", callback_data='off_metadata')
+        ],
         [
-            InlineKeyboardButton(
-                text="• ᴊᴏɪɴᴇᴅ •", callback_data="check_subscription"
-            )
+            InlineKeyboardButton("How to Set Metadata", callback_data="metainfo")
         ]
-    )
+    ]
+    keyboard = InlineKeyboardMarkup(buttons)
 
-    text = "**ʙᴀᴋᴋᴀ!!, ʏᴏᴜ'ʀᴇ ɴᴏᴛ ᴊᴏɪɴᴇᴅ ᴛᴏ ᴀʟʟ ʀᴇǫᴜɪʀᴇᴅ ᴄʜᴀɴɴᴇʟs, ᴊᴏɪɴ ᴛʜᴇ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ**"
-    await message.reply_photo(
-        photo=IMAGE_URL,
-        caption=text,
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+    await message.reply_text(text=text, reply_markup=keyboard, disable_web_page_preview=True)
 
-@Client.on_callback_query(filters.regex("check_subscription"))
-async def check_subscription(client, callback_query: CallbackQuery):
-    user_id = callback_query.from_user.id
-    not_joined_channels = []
 
-    for channel in FORCE_SUB_CHANNELS:
-        try:
-            user = await client.get_chat_member(channel, user_id)
-            if user.status in {"kicked", "left"}:
-                not_joined_channels.append(channel)
-        except UserNotParticipant:
-            not_joined_channels.append(channel)
+@Client.on_callback_query(filters.regex(r"on_metadata|off_metadata|metainfo"))
+async def metadata_callback(client, query: CallbackQuery):
+    user_id = query.from_user.id
+    data = query.data
 
-    if not not_joined_channels:
-        new_text = "**ʏᴏᴜ ʜᴀᴠᴇ ᴊᴏɪɴᴇᴅ ᴀʟʟ ᴛʜᴇ ʀᴇǫᴜɪʀᴇᴅ ᴄʜᴀɴɴᴇʟs. ᴛʜᴀɴᴋ ʏᴏᴜ! 😊 /start ɴᴏᴡ**"
-        if callback_query.message.caption != new_text:
-            await callback_query.message.edit_caption(
-                caption=new_text,
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("• ɴᴏᴡ ᴄʟɪᴄᴋ ʜᴇʀᴇ •", callback_data='help')]
-                ])
-            )
-    else:
-        buttons = [
-            [
-                InlineKeyboardButton(
-                    text=f"• ᴊᴏɪɴ {channel.capitalize()} •",
-                    url=f"https://t.me/{channel}",
-                )
-            ]
-            for channel in not_joined_channels
-        ]
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text="• ᴊᴏɪɴᴇᴅ •", callback_data="check_subscription"
-                )
-            ]
+    if data == "on_metadata":
+        await db.set_metadata(user_id, "On")
+    elif data == "off_metadata":
+        await db.set_metadata(user_id, "Off")
+    elif data == "metainfo":
+        await query.message.edit_text(
+            text=Txt.META_TXT,
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("Hᴏᴍᴇ", callback_data="home"),
+                    InlineKeyboardButton("close", callback_data="close")
+                ]
+            ])
         )
+        return
 
-        text = "**ʏᴏᴜ ʜᴀᴠᴇ ᴊᴏɪɴᴇᴅ ᴀʟʟ ᴛʜᴇ ʀᴇǫᴜɪʀᴇᴅ ᴄʜᴀɴɴᴇʟs. ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴛʜᴇ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟs ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ**"
-        if callback_query.message.caption != text:
-    
+    # Fetch updated metadata after toggling
+    current = await db.get_metadata(user_id)
+    title = await db.get_title(user_id)
+    author = await db.get_author(user_id)
+    artist = await db.get_artist(user_id)
+    video = await db.get_video(user_id)
+    audio = await db.get_audio(user_id)
+    subtitle = await db.get_subtitle(user_id)
+
+    # Updated metadata message after toggle
+    text = f"""
+**㊋ Yᴏᴜʀ Mᴇᴛᴀᴅᴀᴛᴀ ɪꜱ ᴄᴜʀʀᴇɴᴛʟʏ: {current}**
+
+**◈ Tɪᴛʟᴇ ▹** `{title if title else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Aᴜᴛʜᴏʀ ▹** `{author if author else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Aʀᴛɪꜱᴛ ▹** `{artist if artist else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Aᴜᴅɪᴏ ▹** `{audio if audio else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Sᴜʙᴛɪᴛʟᴇ ▹** `{subtitle if subtitle else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+**◈ Vɪᴅᴇᴏ ▹** `{video if video else 'Nᴏᴛ ꜰᴏᴜɴᴅ'}`  
+    """
+
+    # Update inline buttons
+    buttons = [
+        [
+            InlineKeyboardButton(f"On{' ✅' if current == 'On' else ''}", callback_data='on_metadata'),
+            InlineKeyboardButton(f"Off{' ✅' if current == 'Off' else ''}", callback_data='off_metadata')
+        ],
+        [
+            InlineKeyboardButton("How to Set Metadata", callback_data="metainfo")
+        ]
+    ]
+    await query.message.edit_text(text=text, reply_markup=InlineKeyboardMarkup(buttons), disable_web_page_preview=True)
+
+
+@Client.on_message(filters.private & filters.command('settitle'))
+async def title(client, message):
+    if len(message.command) == 1:
+        return await message.reply_text(
+            "**Gɪᴠᴇ Tʜᴇ Tɪᴛʟᴇ\n\nExᴀᴍᴩʟᴇ:- /settitle Encoded By @Animes_Cruise**")
+    title = message.text.split(" ", 1)[1]
+    await db.set_title(message.from_user.id, title=title)
+    await message.reply_text("**✅ Tɪᴛʟᴇ Sᴀᴠᴇᴅ**")
+
+@Client.on_message(filters.private & filters.command('setauthor'))
+async def author(client, message):
+    if len(message.command) == 1:
+        return await message.reply_text(
+            "**Gɪᴠᴇ Tʜᴇ Aᴜᴛʜᴏʀ\n\nExᴀᴍᴩʟᴇ:- /setauthor @Animes_Cruise**")
+    author = message.text.split(" ", 1)[1]
+    await db.set_author(message.from_user.id, author=author)
+    await message.reply_text("**✅ Aᴜᴛʜᴏʀ Sᴀᴠᴇᴅ**")
+
+@Client.on_message(filters.private & filters.command('setartist'))
+async def artist(client, message):
+    if len(message.command) == 1:
+        return await message.reply_text(
+            "**Gɪᴠᴇ Tʜᴇ Aʀᴛɪꜱᴛ\n\nExᴀᴍᴩʟᴇ:- /setartist @Animes_Cruise**")
+    artist = message.text.split(" ", 1)[1]
+    await db.set_artist(message.from_user.id, artist=artist)
+    await message.reply_text("**✅ Aʀᴛɪꜱᴛ Sᴀᴠᴇᴅ**")
+
+@Client.on_message(filters.private & filters.command('setaudio'))
+async def audio(client, message):
+    if len(message.command) == 1:
+        return await message.reply_text(
+            "**Gɪᴠᴇ Tʜᴇ Aᴜᴅɪᴏ Tɪᴛʟᴇ\n\nExᴀᴍᴩʟᴇ:- /setaudio @Animes_Cruise**")
+    audio = message.text.split(" ", 1)[1]
+    await db.set_audio(message.from_user.id, audio=audio)
+    await message.reply_text("**✅ Aᴜᴅɪᴏ Sᴀᴠᴇᴅ**")
+
+@Client.on_message(filters.private & filters.command('setsubtitle'))
+async def subtitle(client, message):
+    if len(message.command) == 1:
+        return await message.reply_text(
+            "**Gɪᴠᴇ Tʜᴇ Sᴜʙᴛɪᴛʟᴇ Tɪᴛʟᴇ\n\nExᴀᴍᴩʟᴇ:- /setsubtitle @Animes_Cruise**")
+    subtitle = message.text.split(" ", 1)[1]
+    await db.set_subtitle(message.from_user.id, subtitle=subtitle)
+    await message.reply_text("**✅ Sᴜʙᴛɪᴛʟᴇ Sᴀᴠᴇᴅ**")
+
+@Client.on_message(filters.private & filters.command('setvideo'))
+async def video(client, message):
+    if len(message.command) == 1:
+        return await message.reply_text(
+            "**Gɪᴠᴇ Tʜᴇ Vɪᴅᴇᴏ Tɪᴛʟᴇ\n\nExᴀᴍᴩʟᴇ:- /setvideo Encoded by @Animes_Cruise**")
+    video = message.text.split(" ", 1)[1]
+    await db.set_video(message.from_user.id, video=video)
+    await message.reply_text("**✅ Vɪᴅᴇᴏ Sᴀᴠᴇᴅ**")
