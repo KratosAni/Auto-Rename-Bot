@@ -23,7 +23,7 @@ class Database:
             file_id=None,
             caption=None,
             metadata=True,
-            metadata_code="Telegram : @Codeflix_Bots",
+            metadata_code="Telegram : @AniWeb_Shogunate",
             format_template=None,
             ban_status=dict(
                 is_banned=False,
@@ -142,35 +142,35 @@ class Database:
 
     async def get_title(self, user_id):
         user = await self.col.find_one({'_id': int(user_id)})
-        return user.get('title', 'Encoded by @Animes_Cruise')
+        return user.get('title', 'Encoded by @AniWeb_Shogunate
 
     async def set_title(self, user_id, title):
         await self.col.update_one({'_id': int(user_id)}, {'$set': {'title': title}})
 
     async def get_author(self, user_id):
         user = await self.col.find_one({'_id': int(user_id)})
-        return user.get('author', '@Animes_Cruise')
+        return user.get('author', '@AniWeb_Shogunate')
 
     async def set_author(self, user_id, author):
         await self.col.update_one({'_id': int(user_id)}, {'$set': {'author': author}})
 
     async def get_artist(self, user_id):
         user = await self.col.find_one({'_id': int(user_id)})
-        return user.get('artist', '@Animes_Cruise')
+        return user.get('artist', '@AniWeb_Shogunate')
 
     async def set_artist(self, user_id, artist):
         await self.col.update_one({'_id': int(user_id)}, {'$set': {'artist': artist}})
 
     async def get_audio(self, user_id):
         user = await self.col.find_one({'_id': int(user_id)})
-        return user.get('audio', 'By @Animes_Cruise')
+        return user.get('audio', 'By @AniWeb_Shogunate')
 
     async def set_audio(self, user_id, audio):
         await self.col.update_one({'_id': int(user_id)}, {'$set': {'audio': audio}})
 
     async def get_subtitle(self, user_id):
         user = await self.col.find_one({'_id': int(user_id)})
-        return user.get('subtitle', "By @Animes_Cruise")
+        return user.get('subtitle', "By @AniWeb_Shogunate")
 
     async def set_subtitle(self, user_id, subtitle):
         await self.col.update_one({'_id': int(user_id)}, {'$set': {'subtitle': subtitle}})
